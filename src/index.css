@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Fondos */
+  --color-negro: #0A0A0A;
+  --color-negro-suave: #161616;
+  --color-negro-card: #1C1C1C;
+  --color-negro-hover: #242424;
+
+  /* Dorado (paleta completa) */
+  --color-dorado: #D4AF37;
+  --color-dorado-claro: #F4E4A6;
+  --color-dorado-oscuro: #A8862A;
+  --color-dorado-suave: rgba(212, 175, 55, 0.12);
+
+  /* Textos (más legibles) */
+  --color-texto: #F5F5F5;
+  --color-texto-suave: #B0B0B0;
+  --color-texto-muted: #7A7A7A;
+
+  /* Estados */
+  --color-exito: #22C55E;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Playfair Display', serif;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-negro);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Scrollbar elegante */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-negro); }
+::-webkit-scrollbar-thumb { background: var(--color-dorado-oscuro); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-dorado); }
+
+/* Inputs globales más legibles */
+input, select, textarea {
+  color: var(--color-texto);
+  font-size: 15px;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--color-texto-muted);
+}
