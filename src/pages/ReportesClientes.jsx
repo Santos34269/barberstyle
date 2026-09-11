@@ -16,7 +16,7 @@ export default function ReportesClientes() {
     // Traer todos los cortes con cliente
     const { data } = await supabase
       .from('cortes')
-      .select('cliente, total, fecha, ayudante:ayudantes(nombre)')
+      .select('cliente, total, fecha')
       .not('cliente', 'is', null)
       .order('fecha', { ascending: false })
 
@@ -32,7 +32,12 @@ export default function ReportesClientes() {
       if (c.fecha > agrupado[n].ultima) agrupado[n].ultima = c.fecha
     })
 
-    const ranking = Object.values(agrupado).sort((a, b) => b.visitas - a.visitas)
+    // ✅ DESEMPATE: primero por visitas DESC, si empatan por total DESC
+    const ranking = Object.values(agrupado).sort((a, b) => {
+      if (b.visitas !== a.visitas) return b.visitas - a.visitas
+      return b.total - a.total
+    })
+
     setClientes(ranking)
     setCargando(false)
   }
@@ -58,7 +63,7 @@ export default function ReportesClientes() {
         'Total visitas:': clientes.reduce((s, c) => s + c.visitas, 0),
         'Total facturado:': bobCorto(clientes.reduce((s, c) => s + c.total, 0)),
       },
-      filtroInfo: 'Ranking histórico de clientes frecuentes',
+      filtroInfo: 'Ranking histórico — desempate por total gastado',
     })
     toast.success('PDF descargado')
   }
