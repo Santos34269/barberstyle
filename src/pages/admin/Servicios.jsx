@@ -33,11 +33,15 @@ export default function Servicios() {
     setModal(false); cargar()
   }
 
-  const toggleActivo = async (s) => {
-    await supabase.from('servicios').update({ activo: !s.activo }).eq('id', s.id)
-    toast.success(s.activo ? 'Desactivado' : 'Activado')
-    cargar()
-  }
+const toggleActivo = async (a) => {
+  const { error } = await supabase
+    .from('ayudantes')
+    .update({ activo: !a.activo })
+    .eq('id', a.id)
+  if (error) return toast.error('Error: ' + error.message)
+  toast.success(a.activo ? 'Desactivado' : 'Activado')
+  await cargar() // ✅ recargar datos sin navegar
+}
 
   const eliminar = async (s) => {
     const { count } = await supabase.from('corte_detalle').select('*', { count: 'exact', head: true }).eq('servicio_id', s.id)

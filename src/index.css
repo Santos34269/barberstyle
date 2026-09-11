@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -8,23 +8,24 @@
   --color-negro-card: #1C1C1C;
   --color-negro-hover: #242424;
 
-  /* Dorado (paleta completa) */
+  /* Dorado */
   --color-dorado: #D4AF37;
   --color-dorado-claro: #F4E4A6;
   --color-dorado-oscuro: #A8862A;
-  --color-dorado-suave: rgba(212, 175, 55, 0.12);
 
-  /* Textos (más legibles) */
+  /* Textos */
   --color-texto: #F5F5F5;
-  --color-texto-suave: #B0B0B0;
+  --color-texto-suave: #B8B8B8;
   --color-texto-muted: #7A7A7A;
 
   /* Estados */
   --color-exito: #22C55E;
   --color-error: #EF4444;
   --color-info: #3B82F6;
+  --color-alerta: #F59E0B;
 
-  --font-sans: 'Inter', sans-serif;
+  /* Fuentes */
+  --font-sans: 'Manrope', system-ui, sans-serif;
   --font-display: 'Playfair Display', serif;
 }
 
@@ -33,25 +34,28 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+html, body {
   background-color: var(--color-negro);
   color: var(--color-texto);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.6;
 }
 
-/* Scrollbar elegante */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--color-negro); }
 ::-webkit-scrollbar-thumb { background: var(--color-dorado-oscuro); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-dorado); }
 
-/* Inputs globales más legibles */
 input, select, textarea {
   color: var(--color-texto);
-  font-size: 15px;
+  font-family: var(--font-sans);
 }
 input::placeholder, textarea::placeholder {
   color: var(--color-texto-muted);
+}
+
+/* Móvil: inputs no zoom */
+@media (max-width: 768px) {
+  input, select, textarea, button {
+    font-size: 16px !important;
+  }
 }

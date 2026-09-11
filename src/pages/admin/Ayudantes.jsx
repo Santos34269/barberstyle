@@ -33,10 +33,14 @@ export default function Ayudantes() {
   }
 
   const toggleActivo = async (a) => {
-    await supabase.from('ayudantes').update({ activo: !a.activo }).eq('id', a.id)
-    toast.success(a.activo ? 'Desactivado' : 'Activado')
-    cargar()
-  }
+  const { error } = await supabase
+    .from('ayudantes')
+    .update({ activo: !a.activo })
+    .eq('id', a.id)
+  if (error) return toast.error('Error: ' + error.message)
+  toast.success(a.activo ? 'Desactivado' : 'Activado')
+  await cargar() // ✅ recargar datos sin navegar
+}
 
   const eliminar = async (a) => {
     const { count } = await supabase.from('cortes').select('*', { count: 'exact', head: true }).eq('ayudante_id', a.id)
