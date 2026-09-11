@@ -46,7 +46,7 @@ export async function generarPDF({
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.text('Sistema de gestión profesional', logo ? 40 : 12, 22)
+  doc.text('CAPINOTA - COCHABAMBA', logo ? 40 : 12, 22)
 
   // Fecha generación
   doc.setFontSize(8)
@@ -176,7 +176,7 @@ export async function generarPDF({
 
     doc.setFontSize(7)
     doc.setTextColor(120, 120, 120)
-    doc.text('New Style Barber Shop — Reporte generado automáticamente', 12, pageHeight - 10)
+    doc.text('New Style Barber Shop — Reporte generado', 12, pageHeight - 10)
     doc.text(`Página ${i} de ${totalPages}`, pageWidth - 12, pageHeight - 10, { align: 'right' })
   }
 

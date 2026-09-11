@@ -204,8 +204,8 @@ export default function Productos() {
                 <label className="text-xs text-texto-suave font-semibold mb-1 block">Categoría</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { v: 'cuidado', l: '🧴 Cuidado' },
-                    { v: 'bebida', l: '🥤 Bebida' },
+                    { v: 'cuidado', l: 'Productos De Cuidado' },
+                    { v: 'bebida', l: 'Bebidas' },
                   ].map(c => (
                     <button type="button" key={c.v} onClick={() => setForm({ ...form, categoria: c.v })}
                       className={`py-3 rounded-xl border-2 font-semibold transition ${
