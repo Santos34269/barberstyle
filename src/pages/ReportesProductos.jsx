@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
-import { Calendar, Download, Package, TrendingUp, DollarSign } from 'lucide-react'
-import { bob, bobCorto } from '../lib/formato'
+import { Calendar, Download, Package, TrendingUp, Eye } from 'lucide-react'
+import { bobCorto } from '../lib/formato'
 import { hoyBolivia, fechaBolivia } from '../lib/fecha'
 import { generarPDF } from '../lib/pdf'
 
@@ -15,14 +15,14 @@ export default function ReportesProductos() {
 
   const cargar = async () => {
     setCargando(true)
-    let query = supabase
+    const { data } = await supabase
       .from('ventas_productos')
       .select('*, producto:productos(categoria)')
       .gte('fecha', desde)
       .lte('fecha', hasta)
       .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
 
-    const { data } = await query
     let resultado = data || []
 
     if (categoria !== 'todos') {
@@ -33,48 +33,37 @@ export default function ReportesProductos() {
     setCargando(false)
   }
 
-  useEffect(() => { cargar() }, [])
+  useEffect(() => { cargar() }, [desde, hasta, categoria])
 
   const totalVentas = ventas.reduce((s, v) => s + Number(v.total), 0)
   const totalItems = ventas.reduce((s, v) => s + v.cantidad, 0)
-  const totalEfectivo = ventas.reduce((s, v) => s + Number(v.monto_efectivo || 0), 0)
-  const totalQR = ventas.reduce((s, v) => s + Number(v.monto_qr || 0), 0)
-
-  // Ranking por producto
-  const porProducto = {}
-  ventas.forEach(v => {
-    if (!porProducto[v.nombre_producto]) {
-      porProducto[v.nombre_producto] = { cantidad: 0, total: 0 }
-    }
-    porProducto[v.nombre_producto].cantidad += v.cantidad
-    porProducto[v.nombre_producto].total += Number(v.total)
-  })
-  const rankingProductos = Object.entries(porProducto)
-    .map(([nombre, d]) => ({ nombre, ...d }))
-    .sort((a, b) => b.total - a.total)
 
   const exportarPDF = async () => {
     await generarPDF({
       titulo: 'Reporte de Ventas de Productos',
-      subtitulo: `${ventas.length} ventas registradas`,
-      headers: ['Fecha', 'Producto', 'Cant.', 'P. Unit.', 'Método', 'Total'],
+      subtitulo: `${ventas.length} ventas registradas — ${totalItems} ítems vendidos`,
+      headers: ['Fecha', 'Producto', 'Cant.', 'P. Unit.', 'Pago', 'Efectivo', 'QR', 'Total'],
       rows: ventas.map(v => [
         fechaBolivia(v.fecha),
         v.nombre_producto,
         v.cantidad,
         bobCorto(v.precio_unitario),
         v.metodo_pago,
+        v.metodo_pago === 'efectivo' ? bobCorto(v.total)
+          : v.metodo_pago === 'qr' ? '—'
+          : bobCorto(v.monto_efectivo || 0),
+        v.metodo_pago === 'qr' ? bobCorto(v.total)
+          : v.metodo_pago === 'efectivo' ? '—'
+          : bobCorto(v.monto_qr || 0),
         bobCorto(v.total),
       ]),
       totales: {
         'Total ventas:': ventas.length,
         'Ítems vendidos:': totalItems,
-        'Efectivo:': bobCorto(totalEfectivo),
-        'QR:': bobCorto(totalQR),
         'TOTAL:': bobCorto(totalVentas),
       },
       filtroInfo: `Del ${fechaBolivia(desde)} al ${fechaBolivia(hasta)} — Categoría: ${
-        categoria === 'todos' ? 'Todas' : categoria
+        categoria === 'todos' ? 'Todas' : categoria === 'cuidado' ? 'Cuidado' : 'Bebidas'
       }`,
     })
     toast.success('PDF descargado')
@@ -87,8 +76,15 @@ export default function ReportesProductos() {
           <h1 className="font-display text-3xl md:text-4xl text-dorado font-bold flex items-center gap-3">
             <Package /> Reportes de Productos
           </h1>
-          <p className="text-texto-suave text-sm mt-1">Ventas de cuidado y bebidas</p>
+          <p className="text-texto-suave text-sm mt-1">Vista previa del reporte filtrado</p>
         </div>
+
+        {ventas.length > 0 && (
+          <button onClick={exportarPDF}
+            className="border-2 border-dorado text-dorado font-bold py-3 px-5 rounded-xl hover:bg-dorado/10 transition flex items-center gap-2">
+            <Download size={18} /> Descargar PDF
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -118,76 +114,113 @@ export default function ReportesProductos() {
             <Calendar size={18} /> Aplicar
           </button>
         </div>
-
-        {ventas.length > 0 && (
-          <button onClick={exportarPDF}
-            className="mt-3 w-full border-2 border-dorado text-dorado font-bold py-2.5 px-4 rounded-xl hover:bg-dorado/10 transition flex items-center justify-center gap-2">
-            <Download size={18} /> Descargar PDF profesional
-          </button>
-        )}
       </div>
 
       {cargando ? (
-        <p className="text-texto-muted">Cargando...</p>
+        <p className="text-texto-muted text-center py-8">Cargando...</p>
+      ) : ventas.length === 0 ? (
+        <div className="bg-negro-suave border border-dorado/20 rounded-2xl p-8 text-center">
+          <Eye className="text-dorado/40 mx-auto mb-3" size={40} />
+          <p className="text-texto-muted">No hay ventas en este rango</p>
+        </div>
       ) : (
         <>
-          {/* Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-4">
-              <Package className="text-dorado mb-2" size={22} />
-              <p className="text-xs text-texto-suave font-semibold">Ventas</p>
-              <p className="text-2xl font-display text-dorado font-bold">{ventas.length}</p>
-            </div>
-            <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-4">
-              <TrendingUp className="text-info mb-2" size={22} />
-              <p className="text-xs text-texto-suave font-semibold">Ítems vendidos</p>
-              <p className="text-2xl font-display text-info font-bold">{totalItems}</p>
-            </div>
-            <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-4">
-              <DollarSign className="text-exito mb-2" size={22} />
-              <p className="text-xs text-texto-suave font-semibold">Ingresos</p>
-              <p className="text-xl font-display text-exito font-bold">{bobCorto(totalVentas)}</p>
-            </div>
-            <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-4">
-              <DollarSign className="text-dorado mb-2" size={22} />
-              <p className="text-xs text-texto-suave font-semibold">Ticket prom.</p>
-              <p className="text-xl font-display text-dorado font-bold">
-                {ventas.length > 0 ? bobCorto(totalVentas / ventas.length) : bobCorto(0)}
+          {/* Resumen compacto */}
+          <div className="bg-dorado/5 border border-dorado/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-dorado text-xs uppercase tracking-wider font-bold">Vista previa</p>
+              <p className="text-texto-suave text-sm">
+                {fechaBolivia(desde)} → {fechaBolivia(hasta)} · {categoria === 'todos' ? 'Todas las categorías' : categoria}
               </p>
+            </div>
+            <div className="text-right">
+              <p className="text-texto-suave text-xs">{ventas.length} ventas · {totalItems} ítems</p>
+              <p className="text-2xl font-display text-dorado font-bold">{bobCorto(totalVentas)}</p>
             </div>
           </div>
 
-          {/* Ranking productos */}
-          {rankingProductos.length > 0 && (
-            <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-5">
-              <h2 className="font-display text-lg text-texto font-bold mb-4 flex items-center gap-2">
-                <TrendingUp className="text-dorado" size={20} /> Top productos
-              </h2>
-              <div className="space-y-2">
-                {rankingProductos.slice(0, 10).map((p, i) => (
-                  <div key={p.nombre} className="flex items-center gap-3 bg-negro-card border border-dorado/10 rounded-xl p-3">
-                    <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                      i === 0 ? 'bg-dorado text-negro' : 'bg-negro text-dorado'
-                    }`}>{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{p.nombre}</p>
-                      <p className="text-xs text-texto-muted">{p.cantidad} unidades</p>
-                    </div>
-                    <p className="text-dorado font-bold">{bobCorto(p.total)}</p>
-                  </div>
-                ))}
-              </div>
+          {/* Tabla preview */}
+          <div className="bg-negro-suave border border-dorado/20 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-negro border-b border-dorado/20">
+                  <tr className="text-left text-texto-suave">
+                    <th className="p-3 font-semibold">Fecha</th>
+                    <th className="p-3 font-semibold">Producto</th>
+                    <th className="p-3 font-semibold text-center">Cant.</th>
+                    <th className="p-3 font-semibold text-right">P. Unit.</th>
+                    <th className="p-3 font-semibold">Pago</th>
+                    <th className="p-3 font-semibold text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ventas.map(v => (
+                    <tr key={v.id} className="border-b border-dorado/5 hover:bg-white/[0.02]">
+                      <td className="p-3 text-texto-suave whitespace-nowrap">{fechaBolivia(v.fecha)}</td>
+                      <td className="p-3 font-semibold text-dorado">{v.nombre_producto}</td>
+                      <td className="p-3 text-center text-texto-suave">{v.cantidad}</td>
+                      <td className="p-3 text-right text-texto-suave whitespace-nowrap">{bobCorto(v.precio_unitario)}</td>
+                      <td className="p-3">
+                        <span className="text-xs px-2 py-1 rounded border uppercase font-bold text-dorado border-dorado/40 bg-dorado/5">
+                          {v.metodo_pago}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-dorado whitespace-nowrap">{bobCorto(v.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-negro border-t-2 border-dorado/40">
+                  <tr>
+                    <td colSpan="5" className="p-3 text-right font-bold text-texto-suave">TOTAL</td>
+                    <td className="p-3 text-right font-display text-lg text-dorado font-bold whitespace-nowrap">
+                      {bobCorto(totalVentas)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-          )}
+          </div>
 
-          {ventas.length === 0 && (
-            <div className="bg-negro-suave border border-dorado/20 rounded-2xl p-8 text-center">
-              <Package className="text-dorado/40 mx-auto mb-3" size={40} />
-              <p className="text-texto-muted">No hay ventas en este rango</p>
-            </div>
-          )}
+          {/* Top productos */}
+          <div className="bg-negro-suave border border-dorado/15 rounded-2xl p-5">
+            <h2 className="font-display text-lg text-texto font-bold mb-4 flex items-center gap-2">
+              <TrendingUp className="text-dorado" size={20} /> Top productos vendidos
+            </h2>
+            <ResumenProductos ventas={ventas} />
+          </div>
         </>
       )}
+    </div>
+  )
+}
+
+function ResumenProductos({ ventas }) {
+  const porProducto = {}
+  ventas.forEach(v => {
+    if (!porProducto[v.nombre_producto]) {
+      porProducto[v.nombre_producto] = { cantidad: 0, total: 0 }
+    }
+    porProducto[v.nombre_producto].cantidad += v.cantidad
+    porProducto[v.nombre_producto].total += Number(v.total)
+  })
+  const ranking = Object.entries(porProducto)
+    .map(([nombre, data]) => ({ nombre, ...data }))
+    .sort((a, b) => b.cantidad - a.cantidad)
+
+  return (
+    <div className="space-y-2">
+      {ranking.map((p, i) => (
+        <div key={p.nombre} className="flex items-center gap-3 bg-negro-card border border-dorado/10 rounded-xl p-3.5">
+          <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+            i === 0 ? 'bg-dorado text-negro' : 'bg-negro text-dorado'
+          }`}>{i + 1}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold truncate">{p.nombre}</p>
+            <p className="text-xs text-texto-muted">{p.cantidad} unidades</p>
+          </div>
+          <p className="text-dorado font-bold">{bobCorto(p.total)}</p>
+        </div>
+      ))}
     </div>
   )
 }

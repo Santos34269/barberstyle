@@ -57,13 +57,19 @@ export default function Reportes() {
     await generarPDF({
       titulo: 'Reporte de Cortes',
       subtitulo: `${cortes.length} cortes registrados`,
-      headers: ['Fecha', 'Barbero', 'Cliente', 'Servicios', 'Pago', 'Total'],
+      headers: ['Fecha', 'Barbero', 'Cliente', 'Servicios', 'Pago', 'Efectivo', 'QR', 'Total'],
       rows: cortes.map(c => [
         fechaBolivia(c.fecha),
         c.ayudante?.nombre || '—',
         c.cliente || '—',
         c.detalle?.map(d => d.nombre_servicio).join(' + ') || '—',
         c.metodo_pago,
+        c.metodo_pago === 'efectivo' ? bobCorto(c.total)
+          : c.metodo_pago === 'qr' ? '—'
+          : bobCorto(c.monto_efectivo || 0),
+        c.metodo_pago === 'qr' ? bobCorto(c.total)
+          : c.metodo_pago === 'efectivo' ? '—'
+          : bobCorto(c.monto_qr || 0),
         bobCorto(c.total),
       ]),
       totales: {
