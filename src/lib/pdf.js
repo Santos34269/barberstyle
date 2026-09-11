@@ -111,48 +111,56 @@ export async function generarPDF({
     margin: { left: 12, right: 12 },
   })
 
-  // ===== TOTALES (mejorados) =====
+  // ===== TOTALES (ancho completo) =====
   if (totales && Object.keys(totales).length > 0) {
     const finalY = doc.lastAutoTable.finalY + 8
-    const boxWidth = 95
-    const boxHeight = 10 + Object.keys(totales).length * 7
-    const boxX = pageWidth - boxWidth - 12
+    const fullWidth = pageWidth - 24 // ancho completo con márgenes
+    const rowHeight = 9
+    const totalHeight = rowHeight * Object.keys(totales).length
 
-    // Fondo caja
+    // Fondo caja (ancho completo)
     doc.setFillColor(250, 248, 240)
     doc.setDrawColor(...DORADO)
     doc.setLineWidth(0.6)
-    doc.roundedRect(boxX, finalY, boxWidth, boxHeight, 3, 3, 'FD')
+    doc.roundedRect(12, finalY, fullWidth, totalHeight, 3, 3, 'FD')
 
-    // Barra lateral dorada
-    doc.setFillColor(...DORADO)
-    doc.roundedRect(boxX, finalY, 2, boxHeight, 1, 1, 'F')
-
-    let ty = finalY + 7
     const entries = Object.entries(totales)
     const lastIdx = entries.length - 1
+
+    let ty = finalY + 6.5
 
     entries.forEach(([label, valor], i) => {
       const esUltimo = i === lastIdx
 
-      if (esUltimo) {
-        // Separador arriba del total
-        doc.setDrawColor(...DORADO)
-        doc.setLineWidth(0.3)
-        doc.line(boxX + 6, ty - 4, boxX + boxWidth - 6, ty - 4)
+      // Fondo alternado (zebra suave) para cada fila
+      if (!esUltimo) {
+        if (i % 2 === 0) {
+          doc.setFillColor(252, 251, 245)
+          doc.rect(12.5, ty - 5, fullWidth - 1, rowHeight - 1, 'F')
+        }
+      } else {
+        // Fondo más dorado para el TOTAL
+        doc.setFillColor(248, 240, 210)
+        doc.rect(12.5, ty - 5, fullWidth - 1, rowHeight, 'F')
+      }
 
+      if (esUltimo) {
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(11)
+        doc.setFontSize(12)
         doc.setTextColor(...DORADO)
       } else {
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(9)
+        doc.setFontSize(10)
         doc.setTextColor(70, 70, 70)
       }
 
-      doc.text(String(label), boxX + 8, ty)
-      doc.text(String(valor), boxX + boxWidth - 6, ty, { align: 'right' })
-      ty += 7
+      // Label a la izquierda
+      doc.text(String(label), 18, ty)
+
+      // Valor a la derecha
+      doc.text(String(valor), pageWidth - 18, ty, { align: 'right' })
+
+      ty += rowHeight
     })
   }
 
