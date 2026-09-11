@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
-import { Check, DollarSign, QrCode, Split, User } from 'lucide-react'
+import { Check, DollarSign, QrCode, Split, User, X } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../hooks/useAuth'
 import { bob, bobCorto } from '../lib/formato'
@@ -11,25 +11,80 @@ export default function RegistrarCorte() {
   const { perfil, isCajero } = useAuth()
   const [ayudantes, setAyudantes] = useState([])
   const [servicios, setServicios] = useState([])
+  const [clientes, setClientes] = useState([])
   const [fecha, setFecha] = useState(hoyBolivia())
   const [ayudanteId, setAyudanteId] = useState('')
   const [cliente, setCliente] = useState('')
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(false)
+  const [sugerencias, setSugerencias] = useState([])
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
   const [seleccionados, setSeleccionados] = useState({})
   const [metodo, setMetodo] = useState('efectivo')
   const [montoEfectivo, setMontoEfectivo] = useState('')
   const [montoQR, setMontoQR] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  const inputClienteRef = useRef(null)
+  const sugerenciasRef = useRef(null)
 
   useEffect(() => {
     const cargar = async () => {
       const { data: a } = await supabase.from('ayudantes').select('*').eq('activo', true).order('nombre')
       const { data: s } = await supabase.from('servicios').select('*').eq('activo', true).order('nombre')
+      const { data: c } = await supabase.from('clientes').select('nombre').order('nombre')
       setAyudantes(a || [])
       setServicios(s || [])
+      setClientes(c || [])
     }
     cargar()
   }, [])
+
+  // Cerrar sugerencias al hacer click fuera
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (
+        inputClienteRef.current && !inputClienteRef.current.contains(e.target) &&
+        sugerenciasRef.current && !sugerenciasRef.current.contains(e.target)
+      ) {
+        setMostrarSugerencias(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  // Filtrar sugerencias al escribir
+  const handleClienteChange = (valor) => {
+    setCliente(valor)
+    setClienteSeleccionado(false)
+
+    if (!valor.trim()) {
+      setSugerencias([])
+      setMostrarSugerencias(false)
+      return
+    }
+
+    const busqueda = valor.toLowerCase().trim()
+    const encontrados = clientes
+      .filter(c => c.nombre.toLowerCase().includes(busqueda))
+      .slice(0, 6)
+
+    setSugerencias(encontrados)
+    setMostrarSugerencias(encontrados.length > 0)
+  }
+
+  const seleccionarCliente = (nombre) => {
+    setCliente(nombre)
+    setClienteSeleccionado(true)
+    setMostrarSugerencias(false)
+  }
+
+  const limpiarCliente = () => {
+    setCliente('')
+    setClienteSeleccionado(false)
+    setSugerencias([])
+    inputClienteRef.current?.focus()
+  }
 
   const toggleServicio = (id) => setSeleccionados(prev => ({ ...prev, [id]: !prev[id] }))
 
@@ -37,24 +92,10 @@ export default function RegistrarCorte() {
   const total = serviciosElegidos.reduce((sum, s) => sum + Number(s.precio), 0)
   const barberoNombre = ayudantes.find(a => a.id === ayudanteId)?.nombre || '—'
 
-  const prepararConfirmacion = async (e) => {
+  const prepararConfirmacion = (e) => {
     e.preventDefault()
     if (!ayudanteId) return toast.error('Selecciona un barbero')
     if (serviciosElegidos.length === 0) return toast.error('Selecciona al menos un servicio')
-
-    // Validar cliente duplicado
-    if (cliente.trim()) {
-      const nombreNorm = cliente.trim()
-      const { data: existente } = await supabase
-        .from('clientes')
-        .select('nombre')
-        .ilike('nombre', nombreNorm)
-        .maybeSingle()
-
-      if (existente && existente.nombre.toLowerCase() === nombreNorm.toLowerCase()) {
-        return toast.error(`El cliente "${nombreNorm}" ya existe. Usa el nombre completo si es otra persona.`)
-      }
-    }
 
     if (metodo === 'mixto') {
       const ef = Number(montoEfectivo) || 0
@@ -78,10 +119,23 @@ export default function RegistrarCorte() {
       qr = Number(montoQR) || 0
     }
 
-    // Guardar cliente si no existe
-    if (cliente.trim()) {
-      await supabase.from('clientes').insert({ nombre: cliente.trim() }).select()
-      // Ignorar error si ya existe (por si acaso)
+    const nombreCliente = cliente.trim()
+
+    // Guardar cliente si es nuevo (no existe en la tabla clientes)
+    if (nombreCliente) {
+      const existe = clientes.some(c => c.nombre.toLowerCase() === nombreCliente.toLowerCase())
+      if (!existe) {
+        const { error: errCliente } = await supabase
+          .from('clientes')
+          .insert({ nombre: nombreCliente })
+
+        if (errCliente) {
+          // Si es duplicado exacto (unique constraint), continuar sin problema
+          if (errCliente.code !== '23505') {
+            console.warn('Cliente no guardado:', errCliente.message)
+          }
+        }
+      }
     }
 
     const { data: corte, error: errCorte } = await supabase
@@ -92,13 +146,13 @@ export default function RegistrarCorte() {
         metodo_pago: metodo,
         monto_efectivo: efectivo,
         monto_qr: qr,
-        cliente: cliente.trim() || null,
+        cliente: nombreCliente || null,
         registrado_por: perfil?.id,
       })
       .select().single()
 
     if (errCorte) {
-      toast.error('Error al guardar: ' + errCorte.message)
+      toast.error('Error: ' + errCorte.message)
       setGuardando(false)
       return
     }
@@ -115,12 +169,19 @@ export default function RegistrarCorte() {
     if (errDet) return toast.error('Error en detalle')
 
     toast.success(`Corte guardado ✓ ${bob(total)}`)
+
+    // Reset
     setSeleccionados({})
     setAyudanteId('')
     setCliente('')
+    setClienteSeleccionado(false)
     setMetodo('efectivo')
     setMontoEfectivo('')
     setMontoQR('')
+
+    // Recargar clientes
+    const { data: c } = await supabase.from('clientes').select('nombre').order('nombre')
+    setClientes(c || [])
   }
 
   return (
@@ -157,19 +218,60 @@ export default function RegistrarCorte() {
           </div>
         </div>
 
-        {/* Cliente (opcional) */}
+        {/* Cliente con autocompletado */}
         <div>
           <label className="text-sm text-texto-suave block mb-2 font-semibold flex items-center gap-2">
             <User size={14} /> Nombre del cliente <span className="text-texto-muted text-xs">(opcional)</span>
           </label>
-          <input
-            type="text"
-            value={cliente}
-            onChange={e => setCliente(e.target.value)}
-            placeholder="Ej: Juan Mamani"
-            className="w-full bg-negro border border-dorado/20 focus:border-dorado rounded-xl px-3 py-3 outline-none transition" />
+
+          <div className="relative" ref={inputClienteRef}>
+            <input
+              type="text"
+              value={cliente}
+              onChange={e => handleClienteChange(e.target.value)}
+              onFocus={() => cliente && setMostrarSugerencias(sugerencias.length > 0)}
+              placeholder="Ej: Carlos Ontiveros"
+              autoComplete="off"
+              className={`w-full bg-negro border-2 rounded-xl px-3 py-3 pr-10 outline-none transition ${
+                clienteSeleccionado
+                  ? 'border-exito/50 focus:border-exito'
+                  : 'border-dorado/20 focus:border-dorado'
+              }`}
+            />
+            {cliente && (
+              <button type="button" onClick={limpiarCliente}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-texto-muted hover:text-error">
+                <X size={18} />
+              </button>
+            )}
+
+            {/* Sugerencias */}
+            {mostrarSugerencias && sugerencias.length > 0 && (
+              <div ref={sugerenciasRef}
+                className="absolute top-full left-0 right-0 mt-2 bg-negro-card border-2 border-dorado/30 rounded-xl shadow-2xl shadow-black/50 z-20 max-h-64 overflow-y-auto">
+                <p className="text-[10px] text-texto-muted uppercase tracking-wider font-bold px-3 py-2 border-b border-dorado/10">
+                  Clientes existentes ({sugerencias.length})
+                </p>
+                {sugerencias.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => seleccionarCliente(s.nombre)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-dorado/10 transition flex items-center gap-2 border-b border-dorado/5 last:border-0">
+                    <User size={14} className="text-dorado shrink-0" />
+                    <span className="text-sm text-texto">{s.nombre}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <p className="text-[11px] text-texto-muted mt-1.5">
-            💡 Si es un cliente nuevo, escribe su nombre completo. Si ya existe, agrega un apellido extra.
+            {clienteSeleccionado
+              ? '✅ Cliente existente seleccionado'
+              : cliente
+                ? '💡 Selecciona una sugerencia si es un cliente que ya vino antes'
+                : '💡 Escribe para buscar clientes existentes'}
           </p>
         </div>
 
