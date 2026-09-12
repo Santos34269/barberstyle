@@ -230,7 +230,7 @@ export default function RegistrarCorte() {
               value={cliente}
               onChange={e => handleClienteChange(e.target.value)}
               onFocus={() => cliente && setMostrarSugerencias(sugerencias.length > 0)}
-              placeholder="Ej: Carlos Ontiveros"
+              placeholder="Ej: Juan Mamani Quispe"
               autoComplete="off"
               className={`w-full bg-negro border-2 rounded-xl px-3 py-3 pr-10 outline-none transition ${
                 clienteSeleccionado

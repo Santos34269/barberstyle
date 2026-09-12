@@ -75,10 +75,10 @@ export default function ReportesClientes() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl md:text-4xl text-dorado font-bold flex items-center gap-3">
-            <Star /> Clientes Más Fieles
+            <Star /> Clientes Más Frecuentes
           </h1>
           <p className="text-texto-suave text-sm mt-1">
-            Top 10 — ideal para regalos de Navidad 🎁
+            Top 10 — Clientes Mas Frecuentes de Barber Shop New Style
           </p>
         </div>
 
